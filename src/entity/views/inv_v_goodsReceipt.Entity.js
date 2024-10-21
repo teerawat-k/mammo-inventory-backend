@@ -2,7 +2,7 @@ const { Sequelize } = require('sequelize')
 
 module.exports = (sequelize) => {
   const Entity = sequelize.define(
-    'inv_v_goodsReceipts',
+    'inv_v_goodsReceipt',
     {
       id: {
         allowNull: false,
@@ -45,7 +45,7 @@ module.exports = (sequelize) => {
       isDeleted: Sequelize.BOOLEAN
     },
     {
-      tableName: 'inv_v_goodsReceipts',
+      tableName: 'inv_v_goodsReceipt',
       timestamps: true
     }
   )

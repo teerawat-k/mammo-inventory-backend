@@ -2,7 +2,7 @@ const { Sequelize } = require('sequelize')
 
 module.exports = (sequelize) => {
   const Entity = sequelize.define(
-    'inv_warehouseStorageProduct',
+    'inv_inventoryBalance',
     {
       id: {
         allowNull: false,
@@ -19,7 +19,7 @@ module.exports = (sequelize) => {
       createdAt: Sequelize.DATE
     },
     {
-      tableName: 'inv_warehouseStorageProduct',
+      tableName: 'inv_inventoryBalance',
       timestamps: true
     }
   )

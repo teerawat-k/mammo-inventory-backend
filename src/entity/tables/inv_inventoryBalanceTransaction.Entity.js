@@ -2,7 +2,7 @@ const { Sequelize } = require('sequelize')
 
 module.exports = (sequelize) => {
   const Entity = sequelize.define(
-    'inv_goodsReceiptProduct',
+    'inv_inventoryBalanceTransaction',
     {
       id: {
         allowNull: false,
@@ -10,19 +10,16 @@ module.exports = (sequelize) => {
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      goodsReceiptId: Sequelize.INTEGER,
-      productId: Sequelize.INTEGER,
+      refNumber: Sequelize.TEXT,
       warehouseStorageId: Sequelize.INTEGER,
+      productId: Sequelize.INTEGER,
+      type: Sequelize.TEXT,
       qty: Sequelize.INTEGER,
-      actualQty: Sequelize.INTEGER,
-      remark: Sequelize.TEXT,
-      updatedBy: Sequelize.INTEGER,
-      updatedAt: Sequelize.DATE,
-      createdBy: Sequelize.INTEGER,
-      createdAt: Sequelize.DATE
+      balanceQty: Sequelize.INTEGER,
+      remark: Sequelize.TEXT
     },
     {
-      tableName: 'inv_goodsReceiptProduct',
+      tableName: 'inv_inventoryBalanceTransaction',
       timestamps: true
     }
   )

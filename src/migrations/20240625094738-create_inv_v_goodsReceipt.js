@@ -4,7 +4,7 @@
 module.exports = {
   async up(queryInterface) {
     await queryInterface.sequelize.query(`
-      CREATE OR REPLACE VIEW public."inv_v_goodsReceipts"
+      CREATE OR REPLACE VIEW public."inv_v_goodsReceipt"
       AS SELECT gr.id,
         gr."grNumber",
         gr."refNumber",
@@ -49,7 +49,7 @@ module.exports = {
 
   async down(queryInterface) {
     await queryInterface.sequelize.query(`
-      DROP VIEW IF EXISTS public."inv_v_goodsReceipts";
+      DROP VIEW IF EXISTS public."inv_v_goodsReceipt";
     `)
   }
 }

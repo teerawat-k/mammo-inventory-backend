@@ -1,9 +1,9 @@
-'use strict';
+'use strict'
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('inv_warehouseStorageProduct', {
+    await queryInterface.createTable('inv_inventoryBalanceTransaction', {
       id: {
         allowNull: false,
         autoIncrement: true,
@@ -11,21 +11,43 @@ module.exports = {
         type: Sequelize.INTEGER,
         comment: 'ไอดี'
       },
+      refNumber: {
+        type: Sequelize.TEXT,
+        comment: 'เอกสารอ้างอิง'
+      },
       warehouseStorageId: {
         allowNull: false,
         type: Sequelize.INTEGER,
-        comment: 'ไอดีตำแหน่งที่เก็บ'
+        comment: 'ไอดีจุดเก็บ'
       },
       productId: {
         allowNull: false,
         type: Sequelize.INTEGER,
         comment: 'ไอดีสินค้า'
       },
+      type: {
+        allowNull: false,
+        type: Sequelize.TEXT,
+        comment: 'ประเภท รับเข้า/จ่ายออก',
+        validate: {
+          isIn: [['IN', 'OUT']]
+        }
+      },
       qty: {
         allowNull: false,
         type: Sequelize.INTEGER,
         defaultValue: 0,
-        comment: 'จำนวนสินค้า'
+        comment: 'จำนวน'
+      },
+      balanceQty: {
+        allowNull: false,
+        type: Sequelize.INTEGER,
+        defaultValue: 0,
+        comment: 'จำนวนคงคลัง'
+      },
+      remark: {
+        type: Sequelize.TEXT,
+        comment: 'หมายเหตุ'
       },
       updatedBy: {
         allowNull: true,
@@ -47,10 +69,10 @@ module.exports = {
         defaultValue: Sequelize.literal('NOW()'),
         comment: 'วันที่สร้าง'
       }
-    });
+    })
   },
 
-  async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('inv_warehouseStorageProduct');
+  async down(queryInterface) {
+    await queryInterface.dropTable('inv_inventoryBalanceTransaction')
   }
-};
+}

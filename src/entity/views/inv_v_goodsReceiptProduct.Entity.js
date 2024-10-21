@@ -2,7 +2,7 @@ const { Sequelize } = require('sequelize')
 
 module.exports = (sequelize) => {
   const Entity = sequelize.define(
-    'inv_v_goodsReceiptsProduct',
+    'inv_v_goodsReceiptProduct',
     {
       id: {
         allowNull: false,
@@ -10,7 +10,7 @@ module.exports = (sequelize) => {
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      goodsReceiptsId: Sequelize.INTEGER,
+      goodsReceiptId: Sequelize.INTEGER,
       productId: Sequelize.INTEGER,
       productBarcode: Sequelize.STRING,
       productImage: Sequelize.STRING,
@@ -26,7 +26,7 @@ module.exports = (sequelize) => {
       remark: Sequelize.STRING,
     },
     {
-      tableName: 'inv_v_goodsReceiptsProduct',
+      tableName: 'inv_v_goodsReceiptProduct',
       timestamps: true
     }
   )

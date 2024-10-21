@@ -13,17 +13,18 @@ const Employee = require('./tables/c_employee.Entity')
 
 const Warehouse = require('./tables/inv_warehouse.Entity')
 const WarehouseStorage = require('./tables/inv_warehouseStorage.Entity')
-const WarehouseStorageProduct = require('./tables/inv_warehouseStorageProduct.Entity')
 
 const GoodsReceipt = require('./tables/inv_goodsReceipt.Entity')
 const GoodsReceiptProduct = require('./tables/inv_goodsReceiptProduct.Entity')
-const ViewGoodsReceipt = require('./views/inv_v_goodsReceipts.Entity')
-const ViewGoodsReceiptProduct = require('./views/inv_v_goodsReceiptsProduct.Entity')
+const ViewGoodsReceipt = require('./views/inv_v_goodsReceipt.Entity')
+const ViewGoodsReceiptProduct = require('./views/inv_v_goodsReceiptProduct.Entity')
 const StockRequisition = require('./tables/inv_stockRequisition.Entity')
 const StockRequisitionType = require('./tables/inv_stockRequisitionType')
 const StockRequisitionProduct = require('./tables/inv_stockRequisitionProduct.Entity')
 const ViewStockRequisition = require('./views/inv_v_stockRequisition.Entity')
 const ViewStockRequisitionProduct = require('./views/inv_v_stockRequisitionProduct.Entity')
+const InventoryBalance = require('./tables/inv_inventoryBalance.Entity')
+const InventoryBalanceTransaction = require('./tables/inv_inventoryBalanceTransaction.Entity')
 
 const sequelize = new Sequelize(config.database, config.username, config.password, config)
 const exec = require('child_process').exec
@@ -57,7 +58,6 @@ const entity = {
 
   Warehouse: Warehouse(sequelize),
   WarehouseStorage: WarehouseStorage(sequelize),
-  WarehouseStorageProduct: WarehouseStorageProduct(sequelize),
 
   GoodsReceipt: GoodsReceipt(sequelize),
   GoodsReceiptProduct: GoodsReceiptProduct(sequelize),
@@ -67,7 +67,9 @@ const entity = {
   StockRequisitionType: StockRequisitionType(sequelize),
   StockRequisitionProduct: StockRequisitionProduct(sequelize),
   ViewStockRequisition: ViewStockRequisition(sequelize),
-  ViewStockRequisitionProduct: ViewStockRequisitionProduct(sequelize)
+  ViewStockRequisitionProduct: ViewStockRequisitionProduct(sequelize),
+  InventoryBalance: InventoryBalance(sequelize),
+  InventoryBalanceTransaction: InventoryBalanceTransaction(sequelize)
 }
 
 module.exports = entity

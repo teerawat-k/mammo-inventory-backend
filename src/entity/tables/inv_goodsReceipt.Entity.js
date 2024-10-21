@@ -19,6 +19,7 @@ module.exports = (sequelize) => {
       dueDate: Sequelize.DATEONLY,
       receiveStaffId: Sequelize.INTEGER,
       receiveDate: Sequelize.DATEONLY,
+      remark: Sequelize.TEXT,
       isDeleted: Sequelize.BOOLEAN,
       updatedBy: Sequelize.INTEGER,
       updatedAt: Sequelize.DATE,

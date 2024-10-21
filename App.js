@@ -55,5 +55,5 @@ app.use(
   routers
 )
 app.use((_, res) => {
-  return res.status(404).json({ code: '404', message: 'Service not found' })
+  return res.status(404).json({ isError: true, code: '404' })
 })

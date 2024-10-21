@@ -1,4 +1,6 @@
 const entity = require('../entity')
+const DocumentStatusService = require('../service/DocumentStatus.Service')
+const StockRequisitionService = require('../service/StockRequisition.Service')
 const { logger, validation, utils, axios } = require('../utils')
 const { Op, Sequelize, where } = require('sequelize')
 const serviceName = 'invsr'
@@ -62,7 +64,7 @@ module.exports.Search = async (req, res) => {
     const sortCondition = utils.SortColumn(displayColumn, body.ordering)
     if (!sortCondition) return res.json({ isError: true, message: 'Some ordering column is not allow' })
 
-    const result = await entity.ViewStockRequisition.findAndCountAll({
+    let result = await entity.ViewStockRequisition.findAndCountAll({
       attributes: displayColumn,
       where: whereCondition,
       offset: (body.pageNo - 1) * body.pageSize,
@@ -70,27 +72,9 @@ module.exports.Search = async (req, res) => {
       order: sortCondition
     })
 
-    const documentStatus = await entity.DocumentStatus.findAll()
-    const processResult = result.rows.map((item) => {
-      const docStatus = documentStatus.find((status) => status.id == item.documentStatusId)
+    result.rows = await DocumentStatusService.GenerateNextStatus(result.rows)
 
-      item.nextDocumentStatus = []
-      if (docStatus) {
-        if (docStatus.next && docStatus.next.length > 0) {
-          item.nextDocumentStatus = docStatus.next.map((next) => {
-            const _nextStatus = documentStatus.find((status) => status.code == next)
-            if (_nextStatus) {
-              return { id: _nextStatus.id, code: _nextStatus.code, name: _nextStatus.name }
-            }
-          })
-        }
-      }
-
-      item.nextDocumentStatus = item.nextDocumentStatus.filter((item) => item)
-      return item
-    })
-
-    return res.json({ isError: false, totalRow: result.count, body: processResult })
+    return res.json({ isError: false, totalRow: result.count, body: result.rows })
   } catch (error) {
     logger.error(error)
     return res.status(500).json({ isError: true, message: 'Something wrong, please try again later' })
@@ -150,27 +134,14 @@ module.exports.SearchDetail = async (req, res) => {
       'remark'
     ]
 
-    const result = await entity.ViewStockRequisition.findOne({
+    let result = await entity.ViewStockRequisition.findOne({
       attributes: displayColumn,
       where: { id: targetId }
     })
     if (!result) return res.json({ isError: true, message: `ไม่พบข้อมูลใบเบิกสินค้า` })
 
-    const documentStatus = await entity.DocumentStatus.findAll()
-    const docStatus = documentStatus.find((status) => status.id == result.documentStatusId)
-    result.nextDocumentStatus = []
-    if (docStatus) {
-      if (docStatus.next && docStatus.next.length > 0) {
-        result.nextDocumentStatus = docStatus.next.map((next) => {
-          const _nextStatus = documentStatus.find((status) => status.code == next)
-          if (_nextStatus) {
-            return { id: _nextStatus.id, code: _nextStatus.code, name: _nextStatus.name }
-          }
-        })
-      }
-    }
+    result = await DocumentStatusService.GenerateNextStatus(result)
 
-    result.nextDocumentStatus = result.nextDocumentStatus.filter((item) => item)
     return res.json({ isError: false, body: result })
   } catch (error) {
     logger.error(error)
@@ -257,37 +228,12 @@ module.exports.CreateStockRequisition = async (req, res) => {
       if (!recordDeliveryStaffId) return res.json({ isError: true, message: 'ไม่พบข้อมูลพนักงาน (เจ้าหน้าทส่งมอบ)' })
     }
 
-    const codePattern = await axios.GET(req, '/api/company/master/code-pattern', {})
-    if (!codePattern | !codePattern.stockRequisitionNo) {
-      return res.json({ isError: true, message: 'ไม่พบรูปแบบรหัสเอกสารเบิก' })
+    const resultNextSrNumber = await StockRequisitionService.GenerateSRNumber(req)
+    if (resultNextSrNumber.isError) {
+      transaction.rollback()
+      return res.json(resultNextSrNumber)
     }
-
-    const noPattern = codePattern.stockRequisitionNo
-    const numberLength = noPattern.numberLength
-    let pattern = noPattern.pattern
-      .replace(/{service}/g, 'SR')
-      .replace(/{year}/g, new Date().getFullYear())
-      .replace(/{month}/g, new Date().getMonth() + 1 < 10 ? '0' + (new Date().getMonth() + 1) : new Date().getMonth() + 1)
-      .replace(/{day}/g, new Date().getDate() < 10 ? '0' + new Date().getDate() : new Date().getDate())
-      .replace(/{timestamp}/g, new Date().getTime())
-
-    const latestStockRequisition = await entity.StockRequisition.findOne({
-      attributes: ['srNumber'],
-      where: {
-        srNumber: {
-          [Op.and]: [{ [Op.like]: pattern + '%' }, where(Sequelize.fn('LENGTH', Sequelize.col('srNumber')), pattern.length + numberLength)]
-        }
-      },
-      order: [['id', 'DESC']]
-    })
-
-    let nextSrNumber = null
-    if (latestStockRequisition) {
-      const runningNumber = parseInt(latestStockRequisition.srNumber.slice(-numberLength)) + 1
-      nextSrNumber = pattern + runningNumber.toString().padStart(numberLength, '0')
-    } else {
-      nextSrNumber = pattern + '1'.padStart(numberLength, '0')
-    }
+    const nextSrNumber = resultNextSrNumber.data
 
     // create stock requisition
     body.createdStaffId = body.createdStaffId ? body.createdStaffId : userId
@@ -439,17 +385,6 @@ module.exports.UpdateStockRequisition = async (req, res) => {
         transaction.rollback()
         return res.json({ isError: true, message: 'ไม่สามารถเปลี่ยนสถานะเอกสารใบเบิกสินค้าได้' })
       }
-
-      changedDocumentStatusActivity = utils.GenerateUserActivity(
-        userId,
-        serviceName,
-        targetId,
-        'update',
-        'แก้ไขสถานะเอกสารใบเบิกสินค้า',
-        true,
-        record,
-        updatedResult[1][0]
-      )
     }
 
     // update stock requisition
@@ -484,10 +419,10 @@ module.exports.UpdateStockRequisition = async (req, res) => {
       }
     }
     const preDeletedRecord = await entity.StockRequisitionProduct.findAll({
-      where: { stockRequisition: targetId, id: { [Op.in]: body.deleteStockRequisitionProduct.map((item) => item.id) } }
+      where: { stockRequisitionId: targetId, id: { [Op.in]: body.deleteStockRequisitionProduct.map((item) => item.id) } }
     })
     await entity.StockRequisitionProduct.destroy({
-      where: { stockRequisition: targetId, id: { [Op.in]: body.deleteStockRequisitionProduct.map((item) => item.id) } },
+      where: { stockRequisitionId: targetId, id: { [Op.in]: body.deleteStockRequisitionProduct.map((item) => item.id) } },
       transaction: transaction
     })
     for (const product of body.deleteStockRequisitionProduct) {
@@ -503,7 +438,7 @@ module.exports.UpdateStockRequisition = async (req, res) => {
     // ----------------- create stock requisition product -----------------
     // validate create stock requisition product
     for (const product of body.createStockRequisitionProduct) {
-      product.stockRequisition = targetId
+      product.stockRequisitionId = targetId
       const validateResult = validation(product, createOrUpdateProductValidator)
       if (!validateResult.status) {
         transaction.rollback()
@@ -514,7 +449,7 @@ module.exports.UpdateStockRequisition = async (req, res) => {
     // create product in stockRequisition
     const productsQueryBody = body.createStockRequisitionProduct.map((_product) => {
       return {
-        stockRequisition: targetId,
+        stockRequisitionId: targetId,
         productId: _product.productId,
         warehouseStorageId: _product.warehouseStorageId,
         qty: _product.qty,
@@ -538,7 +473,7 @@ module.exports.UpdateStockRequisition = async (req, res) => {
     // ----------------- update stock requisition product -----------------
     // validate update stock requisition product
     for (const product of body.updateStockRequisitionProduct) {
-      product.stockRequisition = targetId
+      product.stockRequisitionId = targetId
       const validateResult = validation(product, createOrUpdateProductValidator)
       if (!validateResult.status) {
         transaction.rollback()
@@ -549,7 +484,7 @@ module.exports.UpdateStockRequisition = async (req, res) => {
     // update product in stockRequisition
     for (const product of body.updateStockRequisitionProduct) {
       const productQueryBody = {
-        stockRequisition: targetId,
+        stockRequisitionId: targetId,
         productId: product.productId,
         warehouseStorageId: product.warehouseStorageId,
         qty: product.qty,
@@ -557,7 +492,7 @@ module.exports.UpdateStockRequisition = async (req, res) => {
         updatedBy: userId,
         updatedAt: new Date()
       }
-      const record = await entity.StockRequisitionProduct.findOne({ where: { id: product.id, stockRequisition: targetId } })
+      const record = await entity.StockRequisitionProduct.findOne({ where: { id: product.id, stockRequisitionId: targetId } })
       if (!record) {
         transaction.rollback()
         return res.json({ isError: true, message: `ไม่พบข้อมูลรายการสินค้าภายในใบเบิกสินค้ารหัส ${product.id}` })

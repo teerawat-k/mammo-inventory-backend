@@ -50,6 +50,10 @@ module.exports = {
         type: Sequelize.DATEONLY,
         comment: 'วันที่รับเข้า'
       },
+      remark: {
+        type: Sequelize.TEXT,
+        comment: 'เลขที่เอกสารอ้างอิง'
+      },
       isDeleted: {
         type: Sequelize.BOOLEAN,
         defaultValue: false,
