@@ -3,8 +3,8 @@
 const entity = require('../entity')
 const DocumentStatusService = require('../service/DocumentStatus.Service')
 const GoodsReceiptService = require('../service/GoodsReceipt.Service')
-const { logger, validation, utils, axios } = require('../utils')
-const { Op, Sequelize, where } = require('sequelize')
+const { logger, validation, utils } = require('../utils')
+const { Op } = require('sequelize')
 const serviceName = 'invgr'
 
 const createOrUpdateGRValidator = {
@@ -63,6 +63,7 @@ module.exports.Search = async (req, res) => {
     const whereCondition = utils.FilterSearchString(displayColumn, body)
     const sortCondition = utils.SortColumn(displayColumn, body.ordering)
     if (!sortCondition) return res.json({ isError: true, message: 'Some ordering column is not allow' })
+    whereCondition.isDeleted = false
 
     let result = await entity.ViewGoodsReceipt.findAndCountAll({
       attributes: displayColumn,
@@ -121,7 +122,7 @@ module.exports.SearchDetail = async (req, res) => {
 
     let result = await entity.ViewGoodsReceipt.findOne({
       attributes: displayColumn,
-      where: { id: targetId }
+      where: { id: targetId, isDelete: false }
     })
     if (!result) return res.json({ isError: true, message: `ไม่พบข้อมูลใบรับเข้าสินค้า` })
 
@@ -154,7 +155,7 @@ module.exports.SearchProduct = async (req, res) => {
     ]
 
     // check record exists
-    const record = await entity.GoodsReceipt.findOne({ where: { id: targetId } })
+    const record = await entity.GoodsReceipt.findOne({ where: { id: targetId, isDelete: false } })
     if (!record) return res.json({ isError: true, message: 'ไม่พบข้อมูลใบรับเข้าสินค้าที่ต้องการดูรายการสินค้า' })
 
     const result = await entity.ViewGoodsReceiptProduct.findAll({
@@ -306,7 +307,7 @@ module.exports.UpdateGoodsReceipt = async (req, res) => {
     // ==============================================================================
 
     // check exists goods receipts record
-    const record = await entity.GoodsReceipt.findOne({ where: { id: targetId } })
+    const record = await entity.GoodsReceipt.findOne({ where: { id: targetId, isDelete: false } })
     if (!record) {
       transaction.rollback()
       return res.json({ isError: true, message: `ไม่พบข้อมูลใบรับเข้าสินค้าที่ต้องการแก้ไข` })
@@ -477,7 +478,7 @@ module.exports.UpdateGoodsReceipt = async (req, res) => {
       const _transaction = await entity.seq.transaction()
       const result = await GoodsReceiptService.UpdateDocumentStatus(targetId, body.documentStatusId, userId, _transaction)
       if (result.isError) {
-        transaction.rollback()
+        _transaction.rollback()
         return res.json(result)
       } else {
         await _transaction.commit()
@@ -539,7 +540,7 @@ module.exports.DeleteGoodsReceipt = async (req, res) => {
     // delete goods receipts products
     let goodsReceiptProductsUserActivityBody = []
     const preDeletedRecord = await entity.GoodsReceiptProduct.findAll({ where: { goodsReceiptId: targetId } })
-    await entity.GoodsReceiptProduct.destroy({ where: { goodsReceiptId: targetId }, transaction: transaction })
+    // await entity.GoodsReceiptProduct.destroy({ where: { goodsReceiptId: targetId }, transaction: transaction })
     for (const deletedRecord of preDeletedRecord) {
       const preRecord = preDeletedRecord.find((item) => item.id === deletedRecord.id)
       if (preRecord) {
@@ -550,7 +551,12 @@ module.exports.DeleteGoodsReceipt = async (req, res) => {
     }
 
     // delete goods receipts
-    await entity.GoodsReceipt.destroy({ where: { id: targetId }, transaction: transaction })
+    let destroyResult = await entity.GoodsReceipt.update({ isDelete: false }, { where: { id: targetId }, transaction: transaction, returning: true })
+
+    if (destroyResult[0] === 0) {
+      transaction.rollback()
+      return res.json({ isError: true, message: 'ลบข้อมูลใบรับเข้าเข้าสินค้าล้มเหลว' })
+    }
 
     // // log user activity
     await entity.LogsUserActivity.create(utils.GenerateUserActivity(userId, serviceName, targetId, 'delete', 'ลบข้อมูลใบรับเข้าเข้าสินค้า', false, record, {}), {

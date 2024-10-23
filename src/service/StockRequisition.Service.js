@@ -17,7 +17,7 @@ module.exports.GenerateSRNumber = async (req) => {
     const stockRequisitionNoPattern = codePattern.find((x) => x.name === 'stockRequisitionNo')
     const numberLength = stockRequisitionNoPattern.numberLength
     let pattern = stockRequisitionNoPattern.pattern
-      .replace(/{service}/g, 'GR')
+      .replace(/{service}/g, 'SR')
       .replace(/{year}/g, new Date().getFullYear())
       .replace(/{month}/g, new Date().getMonth() + 1 < 10 ? '0' + (new Date().getMonth() + 1) : new Date().getMonth() + 1)
       .replace(/{day}/g, new Date().getDate() < 10 ? '0' + new Date().getDate() : new Date().getDate())
@@ -54,7 +54,7 @@ module.exports.UpdateDocumentStatus = async (targetId, toDocumentStatusId, userI
 
   try {
     // check is record exists
-    const record = await entity.StockRequisition.findOne({ where: { id: targetId } })
+    const record = await entity.StockRequisition.findOne({ where: { id: targetId, isDeleted: false } })
     if (!record) {
       return { isError: true, message: 'ไม่พบข้อมูลใบเบิกสินค้าที่ต้องการแก้ไขสถานะ' }
     }
@@ -90,17 +90,20 @@ module.exports.UpdateDocumentStatus = async (targetId, toDocumentStatusId, userI
         remark: 'sr_decrease_inv_balance',
         refNumber: record.srNumber
       }))
-      const result = await InventoryBalanceService.IncreaseProductBalance(payload, userId, transaction)
+      const result = await InventoryBalanceService.DecreaseProductBalance(payload, userId, transaction)
       if (result.isError) {
         return result
       }
     }
 
     // update stock requisition document status
+    console.log(toDocumentStatusId)
+
     const updatedResult = await entity.StockRequisition.update(
       { documentStatusId: toDocumentStatusId },
       { where: { id: targetId }, returning: true, transaction: transaction }
     )
+    console.log(updatedResult)
     if (updatedResult[0] === 0) {
       return { isError: true, message: 'แก้ไขสถานะเอกสารใบเบิกสินค้าล้มเหลว' }
     }

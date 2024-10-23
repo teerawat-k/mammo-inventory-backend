@@ -55,7 +55,7 @@ module.exports.UpdateDocumentStatus = async (targetId, toDocumentStatusId, userI
   try {
     // check is record exists
 
-    const record = await entity.GoodsReceipt.findOne({ where: { id: targetId } })
+    const record = await entity.GoodsReceipt.findOne({ where: { id: targetId, isDeleted: false } })
     if (!record) {
       return { isError: true, message: 'ไม่พบข้อมูลใบรับเข้าสินค้าที่ต้องการแก้ไขสถานะ' }
     }

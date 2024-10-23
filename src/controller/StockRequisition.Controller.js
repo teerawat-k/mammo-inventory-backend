@@ -1,8 +1,8 @@
 const entity = require('../entity')
 const DocumentStatusService = require('../service/DocumentStatus.Service')
 const StockRequisitionService = require('../service/StockRequisition.Service')
-const { logger, validation, utils, axios } = require('../utils')
-const { Op, Sequelize, where } = require('sequelize')
+const { logger, validation, utils } = require('../utils')
+const { Op } = require('sequelize')
 const serviceName = 'invsr'
 
 const createOrUpdateSRValidator = {
@@ -63,6 +63,7 @@ module.exports.Search = async (req, res) => {
     const whereCondition = utils.FilterSearchString(displayColumn, body)
     const sortCondition = utils.SortColumn(displayColumn, body.ordering)
     if (!sortCondition) return res.json({ isError: true, message: 'Some ordering column is not allow' })
+    whereCondition.isDeleted = false
 
     let result = await entity.ViewStockRequisition.findAndCountAll({
       attributes: displayColumn,
@@ -136,7 +137,7 @@ module.exports.SearchDetail = async (req, res) => {
 
     let result = await entity.ViewStockRequisition.findOne({
       attributes: displayColumn,
-      where: { id: targetId }
+      where: { id: targetId, isDeleted: false }
     })
     if (!result) return res.json({ isError: true, message: `ไม่พบข้อมูลใบเบิกสินค้า` })
 
@@ -168,7 +169,7 @@ module.exports.SearchProduct = async (req, res) => {
     ]
 
     // check record exists
-    const record = await entity.StockRequisition.findOne({ where: { id: targetId } })
+    const record = await entity.StockRequisition.findOne({ where: { id: targetId, isDeleted: false } })
     if (!record) return res.json({ isError: true, message: 'ไม่พบข้อมูลใบเบิกสินค้าที่ต้องการดูรายการสินค้า' })
 
     const result = await entity.ViewStockRequisitionProduct.findAll({
@@ -330,7 +331,7 @@ module.exports.UpdateStockRequisition = async (req, res) => {
     // ==============================================================================
 
     // check exists stock requisition record
-    const record = await entity.StockRequisition.findOne({ where: { id: targetId } })
+    const record = await entity.StockRequisition.findOne({ where: { id: targetId, isDeleted: false } })
     if (!record) {
       transaction.rollback()
       return res.json({ isError: true, message: `ไม่พบข้อมูลใบเบิกสินค้าที่ต้องการแก้ไข` })
@@ -365,32 +366,11 @@ module.exports.UpdateStockRequisition = async (req, res) => {
       if (!recordDeliveryStaffId) return res.json({ isError: true, message: 'ไม่พบข้อมูลพนักงาน (เจ้าหน้าทส่งมอบ)' })
     }
 
-    let changedDocumentStatusActivity = null
-    if (body.documentStatusId !== record.documentStatusId) {
-      // check is document status exists
-      const recordDocumentStatus = await entity.DocumentStatus.findOne({ where: { id: record.documentStatusId } })
-      if (!recordDocumentStatus) {
-        transaction.rollback()
-        return res.json({ isError: true, message: 'ไม่พบข้อมูลสถานะเอกสารที่เลือก' })
-      }
-
-      // check target document status exists
-      const targetDocumentStatus = await entity.DocumentStatus.findOne({ where: { id: body.documentStatusId } })
-      if (!targetDocumentStatus) {
-        transaction.rollback()
-        return res.json({ isError: true, message: 'ไม่พบข้อมูลสถานะเอกสารที่ต้องการเปลี่ยน' })
-      }
-
-      if (!recordDocumentStatus.next || recordDocumentStatus.next.length <= 0 || !recordDocumentStatus.next.includes(targetDocumentStatus.code)) {
-        transaction.rollback()
-        return res.json({ isError: true, message: 'ไม่สามารถเปลี่ยนสถานะเอกสารใบเบิกสินค้าได้' })
-      }
-    }
-
     // update stock requisition
     // filter allow key
     const queryBodyStockRequisition = {}
     Object.keys(body).map((key) => (createOrUpdateSRValidator[key] ? (queryBodyStockRequisition[key] = body[key]) : null))
+    delete queryBodyGoodsReceipt.documentStatusId
     queryBodyStockRequisition.updatedBy = userId
     queryBodyStockRequisition.updatedAt = new Date()
     const updatedStockRequisitionResult = await entity.StockRequisition.update(queryBodyStockRequisition, {
@@ -520,12 +500,21 @@ module.exports.UpdateStockRequisition = async (req, res) => {
       }
     )
     await entity.LogsUserActivity.bulkCreate(StockRequisitionProductUserActivityBody, { transaction })
-    if (changedDocumentStatusActivity) {
-      await entity.LogsUserActivity.create(changedDocumentStatusActivity, { transaction })
-    }
 
     // commit transaction
     await transaction.commit()
+
+    if (body.documentStatusId !== record.documentStatusId) {
+      const _transaction = await entity.seq.transaction()
+      const result = await StockRequisitionService.UpdateDocumentStatus(targetId, body.documentStatusId, userId, _transaction)
+      if (result.isError) {
+        _transaction.rollback()
+        return res.json(result)
+      } else {
+        await _transaction.commit()
+      }
+    }
+
     return res.json({ isError: false, message: 'แก้ไขข้อมูลใบเบิกสินค้าสำเร็จ' })
   } catch (error) {
     transaction.rollback()
@@ -535,6 +524,7 @@ module.exports.UpdateStockRequisition = async (req, res) => {
 }
 
 module.exports.UpdateStockRequisitionDocumentStatus = async (req, res) => {
+  const transaction = await entity.seq.transaction()
   try {
     const body = req.body
     // validate input
@@ -544,41 +534,21 @@ module.exports.UpdateStockRequisitionDocumentStatus = async (req, res) => {
     const userId = req.user.id
     const targetId = req.params.stockRequisitionId
 
-    // check is record exists
-    const record = await entity.StockRequisition.findOne({ where: { id: targetId } })
-    if (!record) {
-      return res.json({ isError: true, message: 'ไม่พบข้อมูลใบเบิกสินค้าที่ต้องการแก้ไขสถานะ' })
-    }
-
-    // check is document status exists
-    const recordDocumentStatus = await entity.DocumentStatus.findOne({ where: { id: record.documentStatusId } })
-    if (!recordDocumentStatus) {
-      return res.json({ isError: true, message: 'ไม่พบข้อมูลสถานะเอกสารที่เลือก' })
-    }
-
-    // check target document status exists
-    const targetDocumentStatus = await entity.DocumentStatus.findOne({ where: { id: body.documentStatusId } })
-    if (!targetDocumentStatus) {
-      return res.json({ isError: true, message: 'ไม่พบข้อมูลสถานะเอกสารที่ต้องการเปลี่ยน' })
-    }
-
-    if (!recordDocumentStatus.next || recordDocumentStatus.next.length <= 0 || !recordDocumentStatus.next.includes(targetDocumentStatus.code)) {
-      return res.json({ isError: true, message: 'ไม่สามารถเปลี่ยนสถานะเอกสารใบเบิกสินค้าได้' })
-    }
-
-    // update stock requisition document status
-    const updatedResult = await entity.StockRequisition.update({ documentStatusId: body.documentStatusId }, { where: { id: targetId }, returning: true })
-    if (!updatedResult) {
-      return res.json({ isError: true, message: 'แก้ไขสถานะเอกสารใบเบิกสินค้าล้มเหลว' })
+    const result = await StockRequisitionService.UpdateDocumentStatus(targetId, body.documentStatusId, userId, transaction)
+    if (result.isError) {
+      transaction.rollback()
+      return res.json(result)
     }
 
     // log user activity
     await entity.LogsUserActivity.create(
-      utils.GenerateUserActivity(userId, serviceName, targetId, 'update', 'แก้ไขสถานะเอกสารใบเบิกสินค้า', true, record, updatedResult[1][0])
+      utils.GenerateUserActivity(userId, serviceName, targetId, 'update', 'แก้ไขสถานะเอกสารใบเบิกสินค้า', true, result.record, result.data)
     )
 
+    transaction.commit()
     return res.json({ isError: false, message: 'แก้ไขสถานะเอกสารใบเบิกสินค้าสำเร็จ' })
   } catch (error) {
+    transaction.rollback()
     logger.error(error)
     return res.status(500).json({ isError: true, message: 'Something wrong, please try again later' })
   }
@@ -600,7 +570,7 @@ module.exports.DeleteStockRequisition = async (req, res) => {
     // delete stock requisition products
     let stockRequisitionProductsUserActivityBody = []
     const preDeletedRecord = await entity.StockRequisitionProduct.findAll({ where: { stockRequisitionId: targetId } })
-    await entity.StockRequisitionProduct.destroy({ where: { stockRequisitionId: targetId }, transaction: transaction })
+    // await entity.StockRequisitionProduct.destroy({ where: { stockRequisitionId: targetId }, transaction: transaction })
     for (const deletedRecord of preDeletedRecord) {
       const preRecord = preDeletedRecord.find((item) => item.id === deletedRecord.id)
       if (preRecord) {

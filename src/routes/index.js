@@ -10,10 +10,12 @@ const MasterRoute = require('./Master.Route')
 const WarehouseRouteManagementRoute = require('./WarehouseManagement.Route')
 const GoodsReceiptRoute = require('./GoodsReceipt.Route')
 const StockRequisitionRoute = require('./StockRequisition.Route')
+const InventoryBalanceRoute = require('./InventoryBalance.Route')
 
 router.use('/master', AuthenticationMiddleware.AccessSession, MasterRoute)
 router.use('/warehouse-management', AuthenticationMiddleware.AccessSession, WarehouseRouteManagementRoute)
 router.use('/goods-receipts', AuthenticationMiddleware.AccessSession, GoodsReceiptRoute)
 router.use('/stock-requisition', AuthenticationMiddleware.AccessSession, StockRequisitionRoute)
+router.use('/inventory-balance', AuthenticationMiddleware.AccessSession, InventoryBalanceRoute)
 
 module.exports = router

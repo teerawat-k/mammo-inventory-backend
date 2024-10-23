@@ -25,14 +25,12 @@ module.exports.IncreaseProductBalance = async (data, userId, transaction) => {
     for (record of inventoryPayload) {
       const { productId, warehouseStorageId } = record
       const _record = await entity.InventoryBalance.findOne({ attributes: ['qty'], where: { productId: productId, warehouseStorageId: warehouseStorageId } })
+      record.isExists = _record ? true : false
       record.balanceQty = _record ? _record.qty + record.qty : record.qty
     }
 
     for (record of inventoryPayload) {
-      const isProductExistsInventoryBalance = await entity.InventoryBalance.findOne({
-        where: { productId: record.productId, warehouseStorageId: record.warehouseStorageId }
-      })
-      if (isProductExistsInventoryBalance) {
+      if (record.isExists) {
         const result = await entity.InventoryBalance.update(
           { qty: Sequelize.literal(`qty + ${record.qty}`), updatedAt: Sequelize.literal('CURRENT_TIMESTAMP') },
           {
@@ -41,21 +39,17 @@ module.exports.IncreaseProductBalance = async (data, userId, transaction) => {
             returning: true
           }
         )
-        if (result[0] === 0) {
-          return { isError: true, message: 'เพิ่มจำนวนคงคลังสินค้าล้มเหลว' }
-        }
+        if (result[0] === 0) return { isError: true, message: 'เพิ่มจำนวนคงคลังสินค้าล้มเหลว' }
       } else {
         const result = await entity.InventoryBalance.create(
           {
             warehouseStorageId: record.warehouseStorageId,
             productId: record.productId,
-            qty: record.qty
+            qty: record.balanceQty
           },
           { transaction: transaction }
         )
-        if (!result) {
-          return { isError: true, message: 'เพิ่มจำนวนคงคลังสินค้าล้มเหลว' }
-        }
+        if (!result) return { isError: true, message: 'เพิ่มจำนวนคงคลังสินค้าล้มเหลว' }
       }
     }
 
@@ -103,14 +97,12 @@ module.exports.DecreaseProductBalance = async (data, userId, transaction) => {
     for (record of inventoryPayload) {
       const { productId, warehouseStorageId } = record
       const _record = await entity.InventoryBalance.findOne({ attributes: ['qty'], where: { productId: productId, warehouseStorageId: warehouseStorageId } })
+      record.isExists = _record ? true : false
       record.balanceQty = _record ? _record.qty - record.qty : -record.qty
     }
 
     for (record of inventoryPayload) {
-      const isProductExistsInventoryBalance = await entity.InventoryBalance.findOne({
-        where: { productId: record.productId, warehouseStorageId: record.warehouseStorageId }
-      })
-      if (isProductExistsInventoryBalance) {
+      if (record.isExists) {
         const result = await entity.InventoryBalance.update(
           { qty: Sequelize.literal(`qty - ${record.qty}`), updatedAt: Sequelize.literal('CURRENT_TIMESTAMP') },
           {
@@ -119,27 +111,23 @@ module.exports.DecreaseProductBalance = async (data, userId, transaction) => {
             returning: true
           }
         )
-        if (result[0] === 0) {
-          return { isError: true, message: 'เพิ่มจำนวนคงคลังสินค้าล้มเหลว' }
-        }
+        if (result[0] === 0) return { isError: true, message: 'ลดจำนวนคงคลังสินค้าล้มเหลว' }
       } else {
         const result = await entity.InventoryBalance.create(
           {
             warehouseStorageId: record.warehouseStorageId,
             productId: record.productId,
-            qty: record.qty
+            qty: record.balanceQty
           },
           { transaction: transaction }
         )
-        if (!result) {
-          return { isError: true, message: 'เพิ่มจำนวนคงคลังสินค้าล้มเหลว' }
-        }
+        if (!result) return { isError: true, message: 'ลดจำนวนคงคลังสินค้าล้มเหลว' }
       }
     }
 
     const transactionPayload = inventoryPayload.map((record) => {
       return {
-        type: 'IN',
+        type: 'OUT',
         refNumber: record.refNumber,
         productId: record.productId,
         warehouseStorageId: record.warehouseStorageId,

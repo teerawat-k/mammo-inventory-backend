@@ -25,6 +25,8 @@ const ViewStockRequisition = require('./views/inv_v_stockRequisition.Entity')
 const ViewStockRequisitionProduct = require('./views/inv_v_stockRequisitionProduct.Entity')
 const InventoryBalance = require('./tables/inv_inventoryBalance.Entity')
 const InventoryBalanceTransaction = require('./tables/inv_inventoryBalanceTransaction.Entity')
+const ViewInventoryBalance = require('./views/inv_v_inventoryBalance.Entity')
+const ViewInventoryBalanceTransaction = require('./views/inv_v_inventoryBalanceTransaction.Entity')
 
 const sequelize = new Sequelize(config.database, config.username, config.password, config)
 const exec = require('child_process').exec
@@ -69,7 +71,9 @@ const entity = {
   ViewStockRequisition: ViewStockRequisition(sequelize),
   ViewStockRequisitionProduct: ViewStockRequisitionProduct(sequelize),
   InventoryBalance: InventoryBalance(sequelize),
-  InventoryBalanceTransaction: InventoryBalanceTransaction(sequelize)
+  InventoryBalanceTransaction: InventoryBalanceTransaction(sequelize),
+  ViewInventoryBalance: ViewInventoryBalance(sequelize),
+  ViewInventoryBalanceTransaction: ViewInventoryBalanceTransaction(sequelize)
 }
 
 module.exports = entity
