@@ -58,19 +58,42 @@ module.exports.SearchStorage = async (req, res) => {
   }
 }
 
-
 module.exports.SearchTransaction = async (req, res) => {
   try {
     // validate input
+    const validate = validation(req.query, {
+      pageNo: 'required|integer',
+      pageSize: 'required|integer',
+      ordering: 'string'
+    })
+    if (!validate.status) return res.json({ isError: true, message: validate.message })
 
     const body = req.query
-    const displayColumn = ['id', 'createdAt', 'type', 'refNumber', 'qty', 'balanceQty', 'warehouseId', 'warehouseCode', 'warehouseName', 'warehouseStorageId', 'warehouseStorageCode', 'warehouseStorageName']
+    const displayColumn = [
+      'id',
+      'createdAt',
+      'type',
+      'refNumber',
+      'qty',
+      'balanceQty',
+      'warehouseId',
+      'warehouseCode',
+      'warehouseName',
+      'warehouseStorageId',
+      'warehouseStorageCode',
+      'warehouseStorageName'
+    ]
     const targetId = req.params.productId
     const whereCondition = utils.FilterSearchString(displayColumn, body)
+    const sortCondition = utils.SortColumn(displayColumn, body.ordering)
+    if (!sortCondition) return res.json({ isError: true, message: 'Some ordering column is not allow' })
 
-    const result = await entity.ViewInventoryBalanceTransaction.findAll({
+    const result = await entity.ViewInventoryBalanceTransaction.findAndCountAll({
       attributes: displayColumn,
-      where: { ...whereCondition, productId: targetId }
+      where: { ...whereCondition, productId: targetId },
+      offset: (body.pageNo - 1) * body.pageSize,
+      limit: body.pageSize,
+      order: sortCondition
     })
 
     return res.json({ isError: false, body: result })
