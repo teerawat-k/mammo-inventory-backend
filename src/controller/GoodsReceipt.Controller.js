@@ -122,7 +122,7 @@ module.exports.SearchDetail = async (req, res) => {
 
     let result = await entity.ViewGoodsReceipt.findOne({
       attributes: displayColumn,
-      where: { id: targetId, isDelete: false }
+      where: { id: targetId, isDeleted: false }
     })
     if (!result) return res.json({ isError: true, message: `ไม่พบข้อมูลใบรับเข้าสินค้า` })
 
@@ -155,7 +155,7 @@ module.exports.SearchProduct = async (req, res) => {
     ]
 
     // check record exists
-    const record = await entity.GoodsReceipt.findOne({ where: { id: targetId, isDelete: false } })
+    const record = await entity.GoodsReceipt.findOne({ where: { id: targetId, isDeleted: false } })
     if (!record) return res.json({ isError: true, message: 'ไม่พบข้อมูลใบรับเข้าสินค้าที่ต้องการดูรายการสินค้า' })
 
     const result = await entity.ViewGoodsReceiptProduct.findAll({
@@ -307,7 +307,7 @@ module.exports.UpdateGoodsReceipt = async (req, res) => {
     // ==============================================================================
 
     // check exists goods receipts record
-    const record = await entity.GoodsReceipt.findOne({ where: { id: targetId, isDelete: false } })
+    const record = await entity.GoodsReceipt.findOne({ where: { id: targetId, isDeleted: false } })
     if (!record) {
       transaction.rollback()
       return res.json({ isError: true, message: `ไม่พบข้อมูลใบรับเข้าสินค้าที่ต้องการแก้ไข` })
@@ -551,7 +551,7 @@ module.exports.DeleteGoodsReceipt = async (req, res) => {
     }
 
     // delete goods receipts
-    let destroyResult = await entity.GoodsReceipt.update({ isDelete: false }, { where: { id: targetId }, transaction: transaction, returning: true })
+    let destroyResult = await entity.GoodsReceipt.update({ isDeleted: false }, { where: { id: targetId }, transaction: transaction, returning: true })
 
     if (destroyResult[0] === 0) {
       transaction.rollback()
