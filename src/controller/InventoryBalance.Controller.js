@@ -81,7 +81,8 @@ module.exports.SearchTransaction = async (req, res) => {
       'warehouseName',
       'warehouseStorageId',
       'warehouseStorageCode',
-      'warehouseStorageName'
+      'warehouseStorageName',
+      'remark'
     ]
     const targetId = req.params.productId
     const whereCondition = utils.FilterSearchString(displayColumn, body)
@@ -96,7 +97,7 @@ module.exports.SearchTransaction = async (req, res) => {
       order: sortCondition
     })
 
-    return res.json({ isError: false, body: result })
+    return res.json({ isError: false, totalRow: result.count, body: result.rows })
   } catch (error) {
     logger.error(error)
     return res.status(500).json({ isError: true, message: 'Something wrong, please try again later' })
