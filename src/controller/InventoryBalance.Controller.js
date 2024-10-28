@@ -1,10 +1,8 @@
 'use strict'
 
-const { attributes } = require('../../config/validation')
 const entity = require('../entity')
 const { axios } = require('../utils')
 const { logger, validation, utils } = require('../utils')
-const { Op } = require('sequelize')
 const serviceName = 'invib'
 
 module.exports.SearchDetail = async (req, res) => {
