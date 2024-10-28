@@ -580,8 +580,13 @@ module.exports.DeleteStockRequisition = async (req, res) => {
       }
     }
 
-    // delete stock requisition
-    await entity.StockRequisition.destroy({ where: { id: targetId }, transaction: transaction })
+    // delete goods receipts
+    let destroyResult = await entity.StockRequisition.update({ isDeleted: true }, { where: { id: targetId }, transaction: transaction, returning: true })
+
+    if (destroyResult[0] === 0) {
+      transaction.rollback()
+      return res.json({ isError: true, message: 'ลบข้อมูลใบเบิกเข้าสินค้าล้มเหลว' })
+    }
 
     // log user activity
     await entity.LogsUserActivity.create(utils.GenerateUserActivity(userId, serviceName, targetId, 'delete', 'ลบข้อมูลใบเบิกสินค้า', false, record, {}), {

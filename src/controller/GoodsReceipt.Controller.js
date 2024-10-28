@@ -551,7 +551,7 @@ module.exports.DeleteGoodsReceipt = async (req, res) => {
     }
 
     // delete goods receipts
-    let destroyResult = await entity.GoodsReceipt.update({ isDeleted: false }, { where: { id: targetId }, transaction: transaction, returning: true })
+    let destroyResult = await entity.GoodsReceipt.update({ isDeleted: true }, { where: { id: targetId }, transaction: transaction, returning: true })
 
     if (destroyResult[0] === 0) {
       transaction.rollback()
