@@ -14,6 +14,8 @@ const Employee = require('./tables/c_employee.Entity')
 const Warehouse = require('./tables/inv_warehouse.Entity')
 const WarehouseStorage = require('./tables/inv_warehouseStorage.Entity')
 
+const InvProduct = require('./tables/inv_product.Entity')
+const ViewInvProduct = require('./views/inv_v_product.Entity')
 const GoodsReceipt = require('./tables/inv_goodsReceipt.Entity')
 const GoodsReceiptProduct = require('./tables/inv_goodsReceiptProduct.Entity')
 const ViewGoodsReceipt = require('./views/inv_v_goodsReceipt.Entity')
@@ -44,7 +46,7 @@ sequelize
     })
   })
   .catch((e) => {
-    logger.error(`Failed, connect to database host${config.host} [ ${e} ]`)
+    logger.error(`Failed, connect to database host ${config.host} [ ${e} ]`)
     process.exit()
   })
 
@@ -61,6 +63,8 @@ const entity = {
   Warehouse: Warehouse(sequelize),
   WarehouseStorage: WarehouseStorage(sequelize),
 
+  InvProduct: InvProduct(sequelize),
+  ViewInvProduct: ViewInvProduct(sequelize),
   GoodsReceipt: GoodsReceipt(sequelize),
   GoodsReceiptProduct: GoodsReceiptProduct(sequelize),
   ViewGoodsReceipt: ViewGoodsReceipt(sequelize),

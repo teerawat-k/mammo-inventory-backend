@@ -352,7 +352,6 @@ module.exports.UpdateGoodsReceipt = async (req, res) => {
     //                                 Goods Receipts Product
     // ==============================================================================
     let GoodsReceiptProductUserActivityBody = []
-
     // ----------------- delete goods receipts product -----------------
     // ----------------- delete goods receipts product -----------------
     // validate delete goods receipts product
@@ -540,7 +539,7 @@ module.exports.DeleteGoodsReceipt = async (req, res) => {
     // delete goods receipts products
     let goodsReceiptProductsUserActivityBody = []
     const preDeletedRecord = await entity.GoodsReceiptProduct.findAll({ where: { goodsReceiptId: targetId } })
-    // await entity.GoodsReceiptProduct.destroy({ where: { goodsReceiptId: targetId }, transaction: transaction })
+    await entity.GoodsReceiptProduct.destroy({ where: { goodsReceiptId: targetId }, transaction: transaction })
     for (const deletedRecord of preDeletedRecord) {
       const preRecord = preDeletedRecord.find((item) => item.id === deletedRecord.id)
       if (preRecord) {
