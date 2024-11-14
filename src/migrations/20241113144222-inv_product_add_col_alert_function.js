@@ -13,10 +13,12 @@ module.exports = {
       allowNull: false,
       defaultValue: 0
     })
+    await queryInterface.renameColumn('inv_product', 'remark', 'warehouseRemark')
   },
 
   async down(queryInterface, Sequelize) {
     await queryInterface.removeColumn('inv_product', 'isAlert')
     await queryInterface.removeColumn('inv_product', 'alertQty')
+    await queryInterface.renameColumn('inv_product', 'warehouseRemark', 'remark')
   }
 }
