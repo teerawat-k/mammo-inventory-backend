@@ -16,7 +16,7 @@ module.exports = {
         type: Sequelize.INTEGER,
         comment: 'ไอดีสินค้าหลัก'
       },
-      remark: {
+      warehouseRemark: {
         type: Sequelize.TEXT,
         comment: 'หมายเหตุ(คลัง)'
       },

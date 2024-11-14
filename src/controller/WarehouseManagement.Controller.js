@@ -2,7 +2,7 @@
 
 const entity = require('../entity')
 const { logger, validation, utils } = require('../utils')
-const { Op, Transaction } = require('sequelize')
+const { Op } = require('sequelize')
 const serviceName = 'invwh'
 
 const createOrUpdateWarehouseValidator = {
@@ -269,9 +269,7 @@ module.exports.UpdateWarehouse = async (req, res) => {
     for (const storage of body.deleteWarehouseStorage) {
       const preRecord = preDeletedRecord.find((item) => item.id === storage.id)
       if (preRecord) {
-        warehouseStorageUserActivityBody.push(
-          utils.GenerateUserActivity(userId, serviceName, storage.id, 'delete', 'ลบข้อมูลจุดเก็บภายในโกดัง', false, preRecord, {})
-        )
+        warehouseStorageUserActivityBody.push(utils.GenerateUserActivity(userId, serviceName, storage.id, 'delete', 'ลบข้อมูลจุดเก็บภายในโกดัง', false, preRecord, {}))
       }
     }
 
@@ -436,9 +434,7 @@ module.exports.DeleteWarehouse = async (req, res) => {
     for (const storage of preDeletedRecord) {
       const preRecord = preDeletedRecord.find((item) => item.id === storage.id)
       if (preRecord) {
-        warehouseStorageUserActivityBody.push(
-          utils.GenerateUserActivity(userId, serviceName, storage.id, 'delete', 'ลบข้อมูลจุดเก็บภายในโกดัง', false, preRecord, {})
-        )
+        warehouseStorageUserActivityBody.push(utils.GenerateUserActivity(userId, serviceName, storage.id, 'delete', 'ลบข้อมูลจุดเก็บภายในโกดัง', false, preRecord, {}))
       }
     }
 

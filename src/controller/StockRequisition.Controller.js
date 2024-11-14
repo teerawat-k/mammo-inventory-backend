@@ -370,7 +370,7 @@ module.exports.UpdateStockRequisition = async (req, res) => {
     // filter allow key
     const queryBodyStockRequisition = {}
     Object.keys(body).map((key) => (createOrUpdateSRValidator[key] ? (queryBodyStockRequisition[key] = body[key]) : null))
-    delete queryBodyGoodsReceipt.documentStatusId
+    delete queryBodyStockRequisition.documentStatusId
     queryBodyStockRequisition.updatedBy = userId
     queryBodyStockRequisition.updatedAt = new Date()
     const updatedStockRequisitionResult = await entity.StockRequisition.update(queryBodyStockRequisition, {
